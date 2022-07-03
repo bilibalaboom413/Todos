@@ -1,5 +1,8 @@
 import { client } from '../../api/client'
 
+import { createSelector } from 'reselect'
+import { StatusFilters } from '../filters/filtersSlice'
+
 const initialState = []
 
 // function nextTodoId(todos) {
@@ -65,22 +68,87 @@ export default function todosReducer(state = initialState, action) {
   }
 }
 
-export async function fetchTodos(dispatch, getState) {
-  const response = await client.get('/fakeApi/todos')
+export const todosLoaded = (todos) => {
+  return {
+    type: 'todos/todosLoaded',
+    payload: todos,
+  }
+}
 
-  const stateBefore = getState()
-  console.log('Todos before dispatch: ', stateBefore.todos.length)
+export const todoAdded = (todo) => {
+  return {
+    type: 'todos/todoAdded',
+    payload: todo,
+  }
+}
 
-  dispatch({ type: 'todos/todosLoaded', payload: response.todos })
+// export async function fetchTodos(dispatch, getState) {
+//   const response = await client.get('/fakeApi/todos')
 
-  const stateAfter = getState()
-  console.log('Todos after dispatch: ', stateAfter.todos.length)
+// const stateBefore = getState()
+// console.log('Todos before dispatch: ', stateBefore.todos.length)
+
+// dispatch({ type: 'todos/todosLoaded', payload: response.todos })
+
+// const stateAfter = getState()
+// console.log('Todos after dispatch: ', stateAfter.todos.length)
+//   dispatch(todoLoaded(response.todos))
+// }
+
+export function fetchTodos() {
+  return async function fetchTodosThunk(dispatch, getState) {
+    const response = await client.get('/fakeApi/todos')
+    dispatch(todosLoaded(response.todos))
+  }
 }
 
 export function saveNewTodo(text) {
   return async function saveNewTodoThunk(dispatch, getState) {
     const initialTodo = { text }
     const response = await client.post('/fakeApi/todos', { todo: initialTodo })
-    dispatch({ type: 'todos/todoAdded', payload: response.todo })
+    // dispatch({ type: 'todos/todoAdded', payload: response.todo })
+    dispatch(todoAdded(response.todo))
   }
 }
+
+export const selectTodoIds = createSelector(
+  (state) => state.todos,
+  (todos) => todos.map((todo) => todo.id)
+)
+
+export const selectTodos = (state) => state.todos
+
+export const selectTodoById = (state, todoId) => {
+  return selectTodos(state).find((todo) => todo.id === todoId)
+}
+
+export const selectFilteredTodos = createSelector(
+  // First input selectors: all todos
+  selectTodos,
+  // Second input selector: all filter values
+  (state) => state.filters,
+  (todos, filters) => {
+    const { status, colors } = filters
+    const showAllCompletions = status === StatusFilters.All
+    if (showAllCompletions && colors.length === 0) {
+      return todos
+    }
+
+    // Boolean
+    const completedStatus = status === StatusFilters.Completed
+    return todos.filter((todo) => {
+      const statusMatches =
+        showAllCompletions || todo.completed === completedStatus
+
+      const colorMatches = colors.length === 0 || colors.includes(todo.color)
+      return statusMatches && colorMatches
+    })
+  }
+)
+
+export const selectFilteredTodoIds = createSelector(
+  // Pass our other memoized selector as an input
+  selectFilteredTodos,
+  // And derive data in the output selector
+  (filteredTodos) => filteredTodos.map((todo) => todo.id)
+)
