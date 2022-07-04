@@ -1,14 +1,21 @@
-import { createStore, applyMiddleware } from 'redux'
-import { composeWithDevTools } from 'redux-devtools-extension'
-import rootReducer from './reducer'
-// import { print1, print2, print3 } from './exampleAddons/middleware'
-import thunkMiddleware from 'redux-thunk'
+import { configureStore } from '@reduxjs/toolkit'
 
-const composedEnhancer = composeWithDevTools(
-  // Add whatever middleware you actually want to use here
-  applyMiddleware(thunkMiddleware)
-  // other store enhancers if any
-)
+import todosReducer from './features/todos/todosSlice'
+import filtersReducer from './features/filters/filtersSlice'
 
-const store = createStore(rootReducer, composedEnhancer)
+/**
+ * That one call to configureStore did all the work for us:
+ * It combined todosReducer and filtersReducer into the root reducer function, which will handle a root state that looks like {todos, filters}
+ * It created a Redux store using that root reducer
+ * It automatically added the thunk middleware
+ * It automatically added more middleware to check for common mistakes like accidentally mutating the state
+ * It automatically set up the Redux DevTools Extension connection
+ */
+const store = configureStore({
+  reducer: {
+    todos: todosReducer,
+    filters: filtersReducer,
+  },
+})
+
 export default store
